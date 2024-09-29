@@ -39,7 +39,6 @@ An adventure awaited just beyond the horizon.
 tokenizer = Tokenizer()
 tokenizer.fit_on_texts([faqs])
 
-
 '''step 2: data cleaning'''
 input_sequences = []
 for sentence in faqs.split('\n'):
@@ -64,3 +63,72 @@ model.add(LSTM(150))
 model.add(Dense(len(tokenizer.word_index) + 1, activation='softmax'))
 model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 model.fit(X, y, epochs=100)
+
+def generate_text():
+    input_text = input_box.get("1.0", tk.END).strip()
+    if not input_text:
+        output_text.insert(tk.END, "Please enter some text to generate.")
+        return
+    for _ in range(10):
+        token_text = tokenizer.texts_to_sequences([input_text])[0]
+        padded_token_text = pad_sequences([token_text], maxlen=max_len-1, padding='pre')
+        pos = np.argmax(model.predict(padded_token_text))
+        for word, index in tokenizer.word_index.items():
+            if index == pos:
+                input_text = input_text + " " + word
+                output_text.insert(tk.END, word + " ")
+                output_text.update()  
+                break
+        time.sleep(2)
+
+'''step 5: User interface'''
+def reset_text():
+    input_box.delete("1.0", tk.END)
+    output_text.delete("1.0", tk.END)
+window = tk.Tk()
+window.title("Text Generation Model")
+
+window.option_add("*Font", "Mukta")
+
+bg_image_url = "https://www.microsoft.com/en-us/research/uploads/prod/2023/03/AI_Microsoft_Research_Header_1920x720.png"
+with urllib.request.urlopen(bg_image_url) as url:
+    bg_image_data = url.read()
+
+bg_photo = PhotoImage(data=bg_image_data)
+
+window_width = window.winfo_screenwidth()
+window_height = window.winfo_screenheight()
+
+bg_photo_resized = bg_photo.subsample(int(bg_photo.width() / window_width), int(bg_photo.height() / window_height))
+
+background_label = tk.Label(window, image=bg_photo_resized)
+background_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+input_frame = tk.Frame(window)
+input_frame.pack(pady=10)
+
+input_label = tk.Label(input_frame, text="Initialize text you want to generate")
+input_label.pack()
+
+input_box = scrolledtext.ScrolledText(input_frame, width=100, height=10)
+input_box.pack()
+
+button_frame = tk.Frame(window)
+button_frame.pack(pady=5)
+
+generate_button = tk.Button(button_frame, text="Generate", command=generate_text)
+generate_button.pack(side=tk.LEFT, padx=5)
+
+reset_button = tk.Button(button_frame, text="Reset", command=reset_text)
+reset_button.pack(side=tk.LEFT, padx=5)
+
+output_frame = tk.Frame(window)
+output_frame.pack(pady=10)
+
+output_label = tk.Label(output_frame, text="Generated text:")
+output_label.pack()
+
+output_text = scrolledtext.ScrolledText(output_frame, width=50, height=10)
+output_text.pack()
+
+window.mainloop()
